@@ -233,7 +233,9 @@ class ClientManager(object):
         label = None
         net_id = None
         if has_neutron:
+            LOG.debug("Using Neutron network service")
             if ( len(self.network_client.list_routers()['routers']) > 0 ) :
+                LOG.debug("Found existing Router(s) in this deployment.")
                 for router in self.network_client.list_routers()['routers']:
                     if ('external_gateway_info' in router and
                     router['external_gateway_info']['network_id'] is not None):
@@ -247,6 +249,7 @@ class ClientManager(object):
                     break
             else:
                 for network in self.network_client.list_networks()['networks']:
+                    LOG.debug("No Routers found in this deployment, using provider networks")
                     if ('router:external' in network and network['router:external'] is not False) :
                         net_id = network['id']
                     if ('router:external' in network and network['router:external'] is not True) :
