@@ -231,18 +231,34 @@ class ClientManager(object):
 
     def do_networks(self, has_neutron, create):
         label = None
+        net_id = None
         if has_neutron:
-            for router in self.network_client.list_routers()['routers']:
-                if ('external_gateway_info' in router and
+            if ( len(self.network_client.list_routers()['routers']) > 0 ) :
+                for router in self.network_client.list_routers()['routers']:
+                    if ('external_gateway_info' in router and
                     router['external_gateway_info']['network_id'] is not None):
-                    net_id = router['external_gateway_info']['network_id']
-                    self.conf.set('network', 'public_network_id', net_id)
-                    self.conf.set('network', 'public_router_id', router['id'])
+                        net_id = router['external_gateway_info']['network_id']
+                        self.conf.set('network', 'public_network_id', net_id)
+                        self.conf.set('network', 'public_router_id', router['id'])
                     break
-            for network in self.compute_client.networks.list():
-                if network.id != net_id:
-                    label = network.label
+                for network in self.compute_client.networks.list():
+                    if network.id != net_id:
+                        label = network.label
                     break
+            else:
+                for network in self.network_client.list_networks()['networks']:
+                    if ('router:external' in network and network['router:external'] is not False) :
+                        net_id = network['id']
+                    if ('router:external' in network and network['router:external'] is not True) :
+                        label = network['name']
+                    if ( label is not None and net_id is not None ) :
+                            self.conf.set('network', 'public_network_id', net_id)
+                            self.conf.set('network', 'public_router_id', " ")
+                            break
+                    if ( net_id == None ) :
+                        raise Exception('No network found with router:external = True, since' \
+                                        ' there are not Routers in this enviorment, there must'\
+                                        ' be a externally routed subnet')
         else:
             networks = self.compute_client.networks.list()
             if networks:
@@ -252,7 +268,6 @@ class ClientManager(object):
         else:
             raise Exception('fixed_network_name could not be discovered and' \
                             'and must be specified')
-
 
 class TempestConf():
     def __init__(self, tempest_conf):
